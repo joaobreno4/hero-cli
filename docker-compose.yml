@@ -1,17 +1,68 @@
 version: '3.8'
-services:
-  cli:
-    build: .
-    stdin_open: true
-    tty: true
-    env_file: .env
-    volumes:
-      - ./data:/app/data
 
+services:
+  # Serviço de Dashboard Web
   dashboard:
     build: .
     command: node src/server.js
     ports:
       - "3000:3000"
+    env_file:
+      - .env
     volumes:
       - ./data:/app/data
+      - .:/app
+    networks:
+      - hero-network
+    depends_on:
+      neo4j:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Serviço da CLI (Executado sob demanda)
+  cli:
+    build: .
+    command: node src/index.js
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+      - .:/app
+    stdin_open: true
+    tty: true
+    networks:
+      - hero-network
+    depends_on:
+      neo4j:
+        condition: service_healthy
+
+  # Banco de Dados de Grafos Neo4j
+  neo4j:
+    image: neo4j:latest
+    ports:
+      - "7474:7474" # Painel administrativo (HTTP)
+      - "7687:7687" # Conexão Bolt (Protocolo binário)
+    environment:
+      - NEO4J_AUTH=neo4j/password123
+    volumes:
+      - neo4j_data:/data
+    networks:
+      - hero-network
+    healthcheck:
+      test: ["CMD", "cypher-shell", "-u", "neo4j", "-p", "password123", "RETURN 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+
+networks:
+  hero-network:
+    driver: bridge
+
+volumes:
+  neo4j_data:
