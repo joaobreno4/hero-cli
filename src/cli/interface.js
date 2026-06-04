@@ -78,7 +78,8 @@ const iniciarCLI = () => {
             
             heroisEncontrados.forEach((h, i) => {
                 const publisher = h.biography.publisher || 'Desconhecida';
-                console.log(`${ui.cyan}${i + 1}.${ui.reset} ${ui.bold}${h.name.padEnd(20)}${ui.reset} | ${publisher}`);
+                const alterEgo = h.biography.fullName ? ` (${h.biography.fullName})` : '';
+                console.log(`${ui.cyan}${i + 1}.${ui.reset} ${ui.bold}${h.name}${alterEgo}${ui.reset} | ${publisher}`);
             });
         }
 

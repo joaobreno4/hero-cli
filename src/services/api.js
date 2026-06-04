@@ -66,7 +66,8 @@ const downloadImage = async (hero) => {
         return `/images/${hero.id}.jpg`;
     } catch (err) {
         console.warn(`[SRE WARN] Download de imagem falhou para ${hero.name}: ${err.message}`);
-        return null;
+        // Plano B: URL autenticada da SuperHero API — o browser carrega diretamente com o token
+        return `https://superheroapi.com/api/${SUPERHERO_TOKEN}/${hero.id}/image`;
     }
 };
 
@@ -156,6 +157,7 @@ const getHeroByName = async (name) => {
                 },
                 biography: {
                     publisher,
+                    fullName: hero.biography['full-name'] || '',
                 },
                 connections: {
                     groupAffiliation: hero.connections?.['group-affiliation'] || '',

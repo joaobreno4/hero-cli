@@ -122,7 +122,7 @@ app.get('/', (req, res) => {
                             <path d="M12 2a5 5 0 1 0 0 10A5 5 0 0 0 12 2z"/>
                             <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
                         </svg>
-                        ${h.thumbnail.startsWith('/images/') ? `<img src="${h.thumbnail}" alt="${h.name}" onerror="this.remove()">` : ''}
+                        ${h.thumbnail ? `<img src="${h.thumbnail}" alt="${h.name}" onerror="this.remove()">` : ''}
                     </div>
                     <div class="content">
                         <strong style="color:#ed1d24">${h.name}</strong>
