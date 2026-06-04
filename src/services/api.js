@@ -4,6 +4,7 @@ const path = require('path');
 const { SUPERHERO_TOKEN } = require('../config/env');
 
 const DB_PATH = path.join(process.cwd(), 'data', 'marvel_heroes.json');
+const IMAGES_DIR = path.join(process.cwd(), 'data', 'images');
 
 // ─── normalização de editora ───────────────────────────────────────────────
 
@@ -39,6 +40,34 @@ const normalizePublisher = (raw) => {
 
     // Mantém o valor limpo original para editoras desconhecidas
     return cleaned;
+};
+
+// ─── download de imagem ───────────────────────────────────────────────────
+
+const downloadImage = async (hero) => {
+    const localFile = path.join(IMAGES_DIR, `${hero.id}.jpg`);
+    if (fs.existsSync(localFile)) return `/images/${hero.id}.jpg`;
+
+    try {
+        fs.mkdirSync(IMAGES_DIR, { recursive: true });
+        const response = await axios.get(hero.thumbnail, {
+            responseType: 'stream',
+            timeout: 8000,
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            },
+        });
+        await new Promise((resolve, reject) => {
+            const writer = fs.createWriteStream(localFile);
+            response.data.pipe(writer);
+            writer.on('finish', resolve);
+            writer.on('error', reject);
+        });
+        return `/images/${hero.id}.jpg`;
+    } catch (err) {
+        console.warn(`[SRE WARN] Download de imagem falhou para ${hero.name}: ${err.message}`);
+        return null;
+    }
 };
 
 // ─── helpers de escrita ────────────────────────────────────────────────────
@@ -153,10 +182,14 @@ const saveToLocalDb = async (hero) => {
     span.setTag('hero.name', hero.name);
 
     try {
+        // Tenta baixar a imagem localmente; se falhar, mantém a URL original
+        const localThumb = await downloadImage(hero);
+        const heroToSave = localThumb ? { ...hero, thumbnail: localThumb } : hero;
+
         // Escrita paralela: JSON (primário) + Neo4j (secundário)
         const [jsonResult, neo4jResult] = await Promise.allSettled([
-            writeToJson(hero),
-            writeToNeo4j(hero),
+            writeToJson(heroToSave),
+            writeToNeo4j(heroToSave),
         ]);
 
         // JSON é obrigatório — propaga o erro se falhar

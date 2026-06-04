@@ -13,6 +13,8 @@ const app = express();
 const port = process.env.PORT || 3000;
 const dbPath = path.join(process.cwd(), 'data', 'marvel_heroes.json');
 
+app.use('/images', express.static(path.join(__dirname, '..', 'data', 'images')));
+
 // ─── Cache de imagens em memória ──────────────────────────────────────────
 // Evita latência e erros de Mixed Content ao referenciar URLs externas
 const imageCache = new Map();
@@ -104,7 +106,8 @@ app.get('/', (req, res) => {
             h1 { text-align: center; color: #ed1d24; text-transform: uppercase; letter-spacing: 2px; }
             .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; max-width: 1200px; margin: 0 auto; }
             .card { background: #1e1e1e; border-radius: 8px; border-bottom: 4px solid #ed1d24; overflow: hidden; }
-            .hero-avatar { width: 100%; height: 280px; background: #222; display: flex; align-items: center; justify-content: center; }
+            .hero-avatar { width: 100%; height: 280px; background: #222; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
+            .hero-avatar img { width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; }
             .hero-avatar svg { width: 80px; height: 80px; opacity: 0.15; }
             .content { padding: 15px; }
         </style>
@@ -119,6 +122,7 @@ app.get('/', (req, res) => {
                             <path d="M12 2a5 5 0 1 0 0 10A5 5 0 0 0 12 2z"/>
                             <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
                         </svg>
+                        ${h.thumbnail.startsWith('/images/') ? `<img src="${h.thumbnail}" alt="${h.name}" onerror="this.remove()">` : ''}
                     </div>
                     <div class="content">
                         <strong style="color:#ed1d24">${h.name}</strong>
