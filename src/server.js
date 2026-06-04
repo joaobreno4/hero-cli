@@ -40,7 +40,13 @@ app.get('/api/proxy-image', async (req, res) => {
     }
 
     try {
-        const response = await axios.get(url, { responseType: 'arraybuffer', timeout: 8000 });
+        const response = await axios.get(url, {
+            responseType: 'arraybuffer',
+            timeout: 8000,
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            },
+        });
         const buffer = Buffer.from(response.data);
         const contentType = response.headers['content-type'] || 'image/jpeg';
 
@@ -60,7 +66,7 @@ app.get('/api/proxy-image', async (req, res) => {
         span.setTag('error', true);
         span.log({ event: 'error', message: error.message });
         span.finish();
-        res.status(502).send('Falha ao buscar imagem');
+        res.redirect('https://via.placeholder.com/400x400?text=Hero');
     }
 });
 
