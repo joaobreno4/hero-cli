@@ -5,6 +5,42 @@ const { SUPERHERO_TOKEN } = require('../config/env');
 
 const DB_PATH = path.join(process.cwd(), 'data', 'marvel_heroes.json');
 
+// ─── normalização de editora ───────────────────────────────────────────────
+
+const KNOWN_PUBLISHERS = new Set([
+    'Marvel Comics', 'DC Comics', 'Dark Horse Comics', 'Image Comics',
+    'IDW Publishing', 'Valiant Comics', 'Wildstorm', 'Vertigo',
+    'Boom! Studios', 'Archie Comics', 'Icon Comics',
+]);
+
+const MARVEL_SIGNALS = [
+    'marvel', 'thor', 'hulk', 'avenger', 'x-men', 'spider', 'stark',
+    'shield', 's.h.i.e.l.d', 'asgard', 'fantastic four', 'iron man',
+];
+
+const DC_SIGNALS = [
+    'dc', 'superman', 'batman', 'justice league', 'gotham', 'metropolis',
+    'green lantern', 'wonder woman', 'flash', 'aquaman',
+];
+
+const normalizePublisher = (raw) => {
+    if (!raw) return 'Desconhecida';
+
+    // Remove espaços extras e caracteres de controle
+    const cleaned = raw.replace(/\s+/g, ' ').trim();
+
+    // Editora já reconhecida — retorna sem alteração
+    if (KNOWN_PUBLISHERS.has(cleaned)) return cleaned;
+
+    const lower = cleaned.toLowerCase();
+
+    if (MARVEL_SIGNALS.some(s => lower.includes(s))) return 'Marvel Comics';
+    if (DC_SIGNALS.some(s => lower.includes(s))) return 'DC Comics';
+
+    // Mantém o valor limpo original para editoras desconhecidas
+    return cleaned;
+};
+
 // ─── helpers de escrita ────────────────────────────────────────────────────
 
 const writeToJson = async (hero) => {
@@ -73,23 +109,26 @@ const getHeroByName = async (name) => {
             return { error: true, message: `Nenhum herói encontrado para: "${name}"` };
         }
 
-        const data = response.data.results.map(hero => ({
-            id: hero.id,
-            name: hero.name,
-            description: `Editora: ${hero.biography.publisher || 'Desconhecida'} | Identidade: ${hero.biography['full-name'] || 'Secreta'}`,
-            thumbnail: hero.image.url,
-            powerstats: {
-                intelligence: hero.powerstats.intelligence,
-                strength: hero.powerstats.strength,
-                speed: hero.powerstats.speed,
-            },
-            biography: {
-                publisher: hero.biography.publisher,
-            },
-            connections: {
-                groupAffiliation: hero.connections?.['group-affiliation'] || '',
-            },
-        }));
+        const data = response.data.results.map(hero => {
+            const publisher = normalizePublisher(hero.biography.publisher);
+            return {
+                id: hero.id,
+                name: hero.name,
+                description: `Editora: ${publisher} | Identidade: ${hero.biography['full-name'] || 'Secreta'}`,
+                thumbnail: hero.image.url,
+                powerstats: {
+                    intelligence: hero.powerstats.intelligence,
+                    strength: hero.powerstats.strength,
+                    speed: hero.powerstats.speed,
+                },
+                biography: {
+                    publisher,
+                },
+                connections: {
+                    groupAffiliation: hero.connections?.['group-affiliation'] || '',
+                },
+            };
+        });
 
         span.setTag('hero.results_count', data.length);
         span.finish();
