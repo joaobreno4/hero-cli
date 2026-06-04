@@ -21,19 +21,37 @@ const writeToJson = async (hero) => {
 const writeToNeo4j = async (hero) => {
     const driver = require('../config/neo4j');
     const session = driver.session();
+    const publisher = hero.biography.publisher || 'Desconhecida';
+
     try {
-        await session.run(
-            `MERGE (h:Hero {id: $id})
-             SET h.name      = $name,
-                 h.publisher = $publisher,
-                 h.thumbnail = $thumbnail`,
-            {
-                id: hero.id,
-                name: hero.name,
-                publisher: hero.biography.publisher || 'Desconhecida',
-                thumbnail: hero.thumbnail,
+        await session.executeWrite(async (tx) => {
+            // Herói + nó Publisher + relacionamento BELONGS_TO
+            await tx.run(
+                `MERGE (h:Hero {id: $id})
+                 SET h.name = $name, h.publisher = $publisher, h.thumbnail = $thumbnail
+                 MERGE (p:Publisher {name: $publisher})
+                 MERGE (h)-[:BELONGS_TO]->(p)`,
+                { id: hero.id, name: hero.name, publisher, thumbnail: hero.thumbnail }
+            );
+
+            // Nós :Team + relacionamento MEMBER_OF (best-effort, dados opcionais)
+            const affiliation = hero.connections?.groupAffiliation || '';
+            if (affiliation && affiliation !== '-') {
+                const teams = affiliation
+                    .split(',')
+                    .map(t => t.trim())
+                    .filter(t => t.length > 0 && t !== '-');
+
+                for (const team of teams) {
+                    await tx.run(
+                        `MATCH (h:Hero {id: $heroId})
+                         MERGE (t:Team {name: $teamName})
+                         MERGE (h)-[:MEMBER_OF]->(t)`,
+                        { heroId: hero.id, teamName: team }
+                    );
+                }
             }
-        );
+        });
     } finally {
         await session.close();
     }
@@ -67,6 +85,9 @@ const getHeroByName = async (name) => {
             },
             biography: {
                 publisher: hero.biography.publisher,
+            },
+            connections: {
+                groupAffiliation: hero.connections?.['group-affiliation'] || '',
             },
         }));
 

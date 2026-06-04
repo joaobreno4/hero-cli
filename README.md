@@ -79,7 +79,10 @@ Resultados para "hulk":
 ✔ Dados sincronizados com sucesso!
 ```
 
-O herói selecionado é salvo simultaneamente no JSON local e como nó `:Hero` no Neo4j.
+O herói selecionado é salvo simultaneamente no JSON local e no Neo4j. O grafo cria automaticamente:
+- Nó `:Hero` com propriedades do herói
+- Nó `:Publisher` e relacionamento `(Hero)-[:BELONGS_TO]->(Publisher)`
+- Nós `:Team` e relacionamentos `(Hero)-[:MEMBER_OF]->(Team)` quando o herói possui afiliações de grupo
 
 ## Tecnologias
 
@@ -100,8 +103,8 @@ O herói selecionado é salvo simultaneamente no JSON local e como nó `:Hero` n
 - [x] Integração com banco de grafos Neo4j
 - [x] Proxy de imagens com cache em memória (resolve Mixed Content)
 - [x] Observabilidade com Datadog APM (spans customizados por camada)
-- [ ] Relacionamentos entre heróis no grafo Neo4j
-- [ ] Alertas e SLOs no Datadog
+- [x] Relacionamentos entre heróis no grafo Neo4j (`BELONGS_TO` Publisher, `MEMBER_OF` Team)
+- [x] Alertas e SLOs no Datadog (ver `DATADOG_SRE.md`)
 
 ---
 

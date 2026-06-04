@@ -50,11 +50,19 @@ interface.js → getHeroByName() → SuperHero API
 ## Modelo de dados Neo4j
 
 ```cypher
+-- Nó Hero + nó Publisher + relacionamento BELONGS_TO
 MERGE (h:Hero {id: $id})
 SET h.name = $name, h.publisher = $publisher, h.thumbnail = $thumbnail
+MERGE (p:Publisher {name: $publisher})
+MERGE (h)-[:BELONGS_TO]->(p)
+
+-- Para cada equipe em connections.group-affiliation (separadas por vírgula):
+MATCH (h:Hero {id: $heroId})
+MERGE (t:Team {name: $teamName})
+MERGE (h)-[:MEMBER_OF]->(t)
 ```
 
-`MERGE` garante idempotência — salvar o mesmo herói duas vezes não cria duplicatas.
+Todas as operações usam `MERGE`, garantindo idempotência — salvar o mesmo herói duas vezes não cria duplicatas nem relacionamentos duplicados. As escritas ocorrem dentro de `session.executeWrite()` (transação atômica). A criação de nós `:Team` é opcional e depende do campo `connections.group-affiliation` retornado pela API.
 
 ## Ordem de boot e healthchecks
 
