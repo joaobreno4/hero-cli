@@ -3,7 +3,7 @@
     "id": "332",
     "name": "Hulk",
     "description": "Editora: Marvel Comics | Identidade: Bruce Banner",
-    "thumbnail": "https://superheroapi.com/api/e9929d32fc9f88a97c40f2a96e775494/332/image",
+    "thumbnail": "https://picsum.photos/seed/332/400/400",
     "powerstats": {
       "intelligence": "88",
       "strength": "100",
@@ -17,7 +17,7 @@
     "id": "659",
     "name": "Thor",
     "description": "Editora: Marvel Comics | Identidade: Thor Odinson",
-    "thumbnail": "https://superheroapi.com/api/e9929d32fc9f88a97c40f2a96e775494/659/image",
+    "thumbnail": "https://picsum.photos/seed/659/400/400",
     "powerstats": {
       "intelligence": "69",
       "strength": "100",
@@ -34,7 +34,7 @@
     "id": "644",
     "name": "Superman",
     "description": "Editora: DC Comics | Identidade: Clark Kent",
-    "thumbnail": "https://superheroapi.com/api/e9929d32fc9f88a97c40f2a96e775494/644/image",
+    "thumbnail": "https://picsum.photos/seed/644/400/400",
     "powerstats": {
       "intelligence": "94",
       "strength": "100",
@@ -51,7 +51,7 @@
     "id": "620",
     "name": "Spider-Man",
     "description": "Editora: Marvel Comics | Identidade: Peter Parker",
-    "thumbnail": "https://superheroapi.com/api/e9929d32fc9f88a97c40f2a96e775494/620/image",
+    "thumbnail": "https://picsum.photos/seed/620/400/400",
     "powerstats": {
       "intelligence": "90",
       "strength": "55",
@@ -62,6 +62,24 @@
     },
     "connections": {
       "groupAffiliation": "Member of the Avengers, formerly member of Outlaws, alternate Fantastic Four"
+    }
+  },
+  {
+    "id": "622",
+    "name": "Spider-Man",
+    "description": "Editora: Marvel Comics | Identidade: Miles Morales",
+    "thumbnail": "https://picsum.photos/seed/622/400/400",
+    "powerstats": {
+      "intelligence": "??",
+      "strength": "58",
+      "speed": "null"
+    },
+    "biography": {
+      "publisher": "Marvel Comics",
+      "fullName": "Miles Morales"
+    },
+    "connections": {
+      "groupAffiliation": "-"
     }
   }
 ]

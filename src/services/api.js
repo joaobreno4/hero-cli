@@ -149,7 +149,7 @@ const getHeroByName = async (name) => {
                 id: hero.id,
                 name: hero.name,
                 description: `Editora: ${publisher} | Identidade: ${hero.biography['full-name'] || 'Secreta'}`,
-                thumbnail: hero.image.url,
+                thumbnail: `https://picsum.photos/seed/${hero.id}/400/400`,
                 powerstats: {
                     intelligence: hero.powerstats.intelligence,
                     strength: hero.powerstats.strength,
