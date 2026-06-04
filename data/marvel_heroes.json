@@ -12,5 +12,39 @@
     "biography": {
       "publisher": "Marvel Comics"
     }
+  },
+  {
+    "id": "659",
+    "name": "Thor",
+    "description": "Editora: Marvel Comics | Identidade: Thor Odinson",
+    "thumbnail": "https://www.superherodb.com/pictures2/portraits/10/100/140.jpg",
+    "powerstats": {
+      "intelligence": "69",
+      "strength": "100",
+      "speed": "83"
+    },
+    "biography": {
+      "publisher": "Marvel Comics"
+    },
+    "connections": {
+      "groupAffiliation": "Avengers"
+    }
+  },
+  {
+    "id": "644",
+    "name": "Superman",
+    "description": "Editora: DC Comics | Identidade: Clark Kent",
+    "thumbnail": "https://www.superherodb.com/pictures2/portraits/10/100/791.jpg",
+    "powerstats": {
+      "intelligence": "94",
+      "strength": "100",
+      "speed": "100"
+    },
+    "biography": {
+      "publisher": "DC Comics"
+    },
+    "connections": {
+      "groupAffiliation": "Justice League of America, The Legion of Super-Heroes (pre-Crisis as Superboy); Justice Society of America (pre-Crisis Earth-2 version); All-Star Squadron (pre-Crisis Earth-2 version)"
+    }
   }
 ]

@@ -48,10 +48,14 @@ const writeToJson = async (hero) => {
     if (fs.existsSync(DB_PATH) && fs.statSync(DB_PATH).size > 0) {
         heroes = JSON.parse(fs.readFileSync(DB_PATH, 'utf-8'));
     }
-    if (!heroes.some(h => h.id === hero.id)) {
+    // Upsert: atualiza entrada existente ou insere nova (comportamento idêntico ao MERGE do Neo4j)
+    const idx = heroes.findIndex(h => h.id === hero.id);
+    if (idx === -1) {
         heroes.push(hero);
-        fs.writeFileSync(DB_PATH, JSON.stringify(heroes, null, 2));
+    } else {
+        heroes[idx] = hero;
     }
+    fs.writeFileSync(DB_PATH, JSON.stringify(heroes, null, 2));
 };
 
 const writeToNeo4j = async (hero) => {
