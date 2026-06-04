@@ -1,47 +1,118 @@
 const axios = require('axios');
+const fs = require('fs');
+const path = require('path');
 const { SUPERHERO_TOKEN } = require('../config/env');
 
-/**
- * Busca personagens na SuperHero API por nome.
- * A SuperHero API é ideal por ser agnóstica (Marvel, DC, etc) 
- * e usar apenas um Token simples.
- */
-const getCharacterByName = async (name) => {
-    try {
-        // A URL utiliza o token que está no seu arquivo .env
-        const url = `https://superheroapi.com/api/${SUPERHERO_TOKEN}/search/${name}`;
-        
-        const response = await axios.get(url);
+const DB_PATH = path.join(process.cwd(), 'data', 'marvel_heroes.json');
 
-        // A API retorna "error" se não encontrar nada ou o token for inválido
-        if (response.data.response === 'error') {
-            console.log(`[SRE INFO] Nenhum herói encontrado para: ${name}`);
-            return [];
-        }
+// ─── helpers de escrita ────────────────────────────────────────────────────
 
-        // Mapeamos os resultados para o formato padrão do nosso ecossistema
-        return response.data.results.map(hero => ({
-            id: hero.id,
-            name: hero.name,
-            // Agrupamos informações biográficas na descrição para o Dashboard
-            description: `Editora: ${hero.biography.publisher || 'Desconhecida'} | Identidade: ${hero.biography['full-name'] || 'Secreta'}`,
-            thumbnail: hero.image.url,
-            // Mantemos os powerstats para futuras implementações de métricas
-            powerstats: {
-                intelligence: hero.powerstats.intelligence,
-                strength: hero.powerstats.strength,
-                speed: hero.powerstats.speed
-            },
-            biography: {
-                publisher: hero.biography.publisher
-            }
-        }));
-
-    } catch (error) {
-        // Aqui o dd-trace captura o erro se o Datadog estiver ativo
-        console.error('[SRE API CRITICAL ERROR]:', error.message);
-        return [];
+const writeToJson = async (hero) => {
+    let heroes = [];
+    if (fs.existsSync(DB_PATH) && fs.statSync(DB_PATH).size > 0) {
+        heroes = JSON.parse(fs.readFileSync(DB_PATH, 'utf-8'));
+    }
+    if (!heroes.some(h => h.id === hero.id)) {
+        heroes.push(hero);
+        fs.writeFileSync(DB_PATH, JSON.stringify(heroes, null, 2));
     }
 };
 
-module.exports = { getCharacterByName };
+const writeToNeo4j = async (hero) => {
+    const driver = require('../config/neo4j');
+    const session = driver.session();
+    try {
+        await session.run(
+            `MERGE (h:Hero {id: $id})
+             SET h.name      = $name,
+                 h.publisher = $publisher,
+                 h.thumbnail = $thumbnail`,
+            {
+                id: hero.id,
+                name: hero.name,
+                publisher: hero.biography.publisher || 'Desconhecida',
+                thumbnail: hero.thumbnail,
+            }
+        );
+    } finally {
+        await session.close();
+    }
+};
+
+// ─── API pública ───────────────────────────────────────────────────────────
+
+const getHeroByName = async (name) => {
+    const tracer = require('dd-trace');
+    const span = tracer.startSpan('superhero.api.search');
+    span.setTag('hero.query', name);
+
+    try {
+        const url = `https://superheroapi.com/api/${SUPERHERO_TOKEN}/search/${name}`;
+        const response = await axios.get(url);
+
+        if (response.data.response === 'error') {
+            span.finish();
+            return { error: true, message: `Nenhum herói encontrado para: "${name}"` };
+        }
+
+        const data = response.data.results.map(hero => ({
+            id: hero.id,
+            name: hero.name,
+            description: `Editora: ${hero.biography.publisher || 'Desconhecida'} | Identidade: ${hero.biography['full-name'] || 'Secreta'}`,
+            thumbnail: hero.image.url,
+            powerstats: {
+                intelligence: hero.powerstats.intelligence,
+                strength: hero.powerstats.strength,
+                speed: hero.powerstats.speed,
+            },
+            biography: {
+                publisher: hero.biography.publisher,
+            },
+        }));
+
+        span.setTag('hero.results_count', data.length);
+        span.finish();
+        return { error: false, data };
+
+    } catch (error) {
+        span.setTag('error', true);
+        span.log({ event: 'error', message: error.message, stack: error.stack });
+        span.finish();
+        return { error: true, message: error.message };
+    }
+};
+
+const saveToLocalDb = async (hero) => {
+    const tracer = require('dd-trace');
+    const span = tracer.startSpan('db.write');
+    span.setTag('hero.id', hero.id);
+    span.setTag('hero.name', hero.name);
+
+    try {
+        // Escrita paralela: JSON (primário) + Neo4j (secundário)
+        const [jsonResult, neo4jResult] = await Promise.allSettled([
+            writeToJson(hero),
+            writeToNeo4j(hero),
+        ]);
+
+        // JSON é obrigatório — propaga o erro se falhar
+        if (jsonResult.status === 'rejected') {
+            throw jsonResult.reason;
+        }
+
+        // Neo4j é best-effort — loga mas não derruba o fluxo
+        if (neo4jResult.status === 'rejected') {
+            console.warn(`[SRE WARN] Neo4j indisponível: ${neo4jResult.reason.message}`);
+            span.setTag('neo4j.skipped', true);
+        }
+
+        span.finish();
+    } catch (error) {
+        span.setTag('error', true);
+        span.log({ event: 'error', message: error.message, stack: error.stack });
+        span.finish();
+        throw error;
+    }
+};
+
+module.exports = { getHeroByName, saveToLocalDb };

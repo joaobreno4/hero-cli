@@ -12,13 +12,14 @@ services:
     volumes:
       - ./data:/app/data
       - .:/app
+      - /app/node_modules
     networks:
       - hero-network
     depends_on:
       neo4j:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/health"]
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:3000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -33,6 +34,7 @@ services:
     volumes:
       - ./data:/app/data
       - .:/app
+      - /app/node_modules
     stdin_open: true
     tty: true
     networks:
@@ -54,11 +56,13 @@ services:
     networks:
       - hero-network
     healthcheck:
-      test: ["CMD", "cypher-shell", "-u", "neo4j", "-p", "password123", "RETURN 1"]
+      # Checa o endpoint HTTP de discovery — disponível assim que o core sobe,
+      # sem depender do cypher-shell que varia entre versões do Neo4j.
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:7474"]
       interval: 15s
       timeout: 10s
-      retries: 5
-      start_period: 20s
+      retries: 6
+      start_period: 40s
 
 networks:
   hero-network:

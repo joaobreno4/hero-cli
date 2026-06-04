@@ -1,47 +1,90 @@
-// 1. Inicialização do Tracer (Capturando o objeto para uso manual)
-const tracer = require('dd-trace').init({ 
+const tracer = require('dd-trace').init({
     service: 'marvel-dashboard',
     env: 'production',
-    logInjection: true 
+    logInjection: true
 });
 
 const express = require('express');
+const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
-const app = express();
-const port = 3001; 
 
+const app = express();
+const port = process.env.PORT || 3000;
 const dbPath = path.join(process.cwd(), 'data', 'marvel_heroes.json');
 
+// ─── Cache de imagens em memória ──────────────────────────────────────────
+// Evita latência e erros de Mixed Content ao referenciar URLs externas
+const imageCache = new Map();
+const MAX_CACHE_ENTRIES = 200;
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24h
+
+app.get('/api/proxy-image', async (req, res) => {
+    const { url } = req.query;
+
+    if (!url || !/^https?:\/\//i.test(url)) {
+        return res.status(400).send('URL inválida');
+    }
+
+    const span = tracer.startSpan('image.proxy.fetch');
+    span.setTag('image.url', url);
+
+    const cached = imageCache.get(url);
+    if (cached && Date.now() - cached.cachedAt < CACHE_TTL_MS) {
+        span.setTag('cache.hit', true);
+        span.finish();
+        res.setHeader('Content-Type', cached.contentType);
+        res.setHeader('Cache-Control', 'public, max-age=86400');
+        res.setHeader('X-Cache', 'HIT');
+        return res.send(cached.buffer);
+    }
+
+    try {
+        const response = await axios.get(url, { responseType: 'arraybuffer', timeout: 8000 });
+        const buffer = Buffer.from(response.data);
+        const contentType = response.headers['content-type'] || 'image/jpeg';
+
+        // Evicção FIFO simples para manter o cap de memória
+        if (imageCache.size >= MAX_CACHE_ENTRIES) {
+            imageCache.delete(imageCache.keys().next().value);
+        }
+        imageCache.set(url, { buffer, contentType, cachedAt: Date.now() });
+
+        span.setTag('cache.hit', false);
+        span.finish();
+        res.setHeader('Content-Type', contentType);
+        res.setHeader('Cache-Control', 'public, max-age=86400');
+        res.setHeader('X-Cache', 'MISS');
+        res.send(buffer);
+    } catch (error) {
+        span.setTag('error', true);
+        span.log({ event: 'error', message: error.message });
+        span.finish();
+        res.status(502).send('Falha ao buscar imagem');
+    }
+});
+
+// ─── Dashboard ────────────────────────────────────────────────────────────
+
 app.get('/', (req, res) => {
-    // Iniciamos um "span" manual para monitorar o tempo de leitura do banco
     const span = tracer.startSpan('web.request.read_db');
     let heroes = [];
-    
+
     try {
         if (fs.existsSync(dbPath)) {
             const stats = fs.statSync(dbPath);
             if (stats.size > 0) {
-                const fileContent = fs.readFileSync(dbPath, 'utf-8');
-                heroes = JSON.parse(fileContent);
+                heroes = JSON.parse(fs.readFileSync(dbPath, 'utf-8'));
             }
         }
-        span.finish(); // Finaliza o span com sucesso
+        span.finish();
     } catch (err) {
-        // PROTEÇÃO ATIVA: Se der erro, avisamos o Datadog com detalhes
         span.setTag('error', true);
         span.setTag('resource.name', 'json_parse_error');
-        span.log({
-            event: 'error',
-            'error.kind': err.name,
-            'error.object': err,
-            message: err.message,
-            stack: err.stack
-        });
-        
+        span.log({ event: 'error', 'error.kind': err.name, message: err.message, stack: err.stack });
         console.error(`[SRE ERROR] Falha crítica no banco: ${err.message}`);
         span.finish();
-        heroes = []; // Mantém o app vivo
+        heroes = [];
     }
 
     const html = `
@@ -64,7 +107,9 @@ app.get('/', (req, res) => {
         <div class="grid">
             ${heroes.length > 0 ? heroes.reverse().map(h => `
                 <div class="card">
-                    <img src="${h.thumbnail}" class="hero-img" referrerpolicy="no-referrer" onerror="this.src='https://via.placeholder.com/400?text=Marvel+Hero'">
+                    <img src="/api/proxy-image?url=${encodeURIComponent(h.thumbnail)}"
+                         class="hero-img"
+                         onerror="this.src='https://via.placeholder.com/400?text=Hero'">
                     <div class="content">
                         <strong style="color:#ed1d24">${h.name}</strong>
                         <p style="font-size: 0.8rem; color:#aaa">${h.description || 'Ficha técnica confidencial.'}</p>
@@ -80,5 +125,5 @@ app.get('/', (req, res) => {
 app.get('/health', (req, res) => res.status(200).send('OK'));
 
 app.listen(port, '0.0.0.0', () => {
-    console.log(`🚀 [DATADOG ACTIVE] Dashboard Marvel na porta ${port}`);
+    console.log(`[DATADOG ACTIVE] Dashboard Marvel na porta ${port}`);
 });
