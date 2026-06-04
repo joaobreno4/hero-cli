@@ -11,6 +11,8 @@ services:
       - ./data:/app/data
       - .:/app
       - /app/node_modules
+    dns:
+      - 8.8.8.8
     networks:
       - hero-network
     depends_on:
@@ -35,6 +37,8 @@ services:
       - /app/node_modules
     stdin_open: true
     tty: true
+    dns:
+      - 8.8.8.8
     networks:
       - hero-network
     depends_on:
