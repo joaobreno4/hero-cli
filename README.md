@@ -1,54 +1,108 @@
 # SuperHero CLI & Dashboard (SRE Edition)
 
-Este projeto é uma ferramenta de linha de comando (CLI) interativa e um dashboard web distribuído, projetado para consultar e gerenciar dados da SuperHero API. Foi construído com foco em boas práticas de SRE (Site Reliability Engineering), utilizando Docker para isolamento, volumes para persistência de dados e normalização de dados em tempo real.
+Ferramenta de linha de comando interativa e dashboard web distribuído para consultar e persistir dados de heróis via [SuperHero API](https://superheroapi.com). Construído com foco em práticas de SRE: infraestrutura imutável com Docker, persistência dual (JSON + Neo4j), observabilidade com Datadog APM e proxy de imagens com cache em memória.
 
-## Arquitetura do Sistema
+## Arquitetura
 
-O projeto utiliza uma arquitetura de microserviços simplificada:
+```
+SuperHero API
+     │
+     ▼
+src/services/api.js
+     │
+     ├── data/marvel_heroes.json  (persistência primária via volume Docker)
+     └── Neo4j :7687              (persistência em grafo, best-effort)
 
-1. CLI (Terminal): Interface interativa para busca de heróis e seleção de variantes.
-2. Dashboard (Web): Servidor Express que lê os dados persistidos e exibe em uma interface visual moderna com suporte a Mixed Content (Upgrade de HTTP para HTTPS).
-3. Data Persistence: Camada de persistência em JSON que atua como um banco de dados local compartilhado via Docker Volumes.
-4. Data Cleaning: Camada lógica que normaliza nomes de editoras (ex: transformando variantes de Thor/Spider em "Marvel Comics").
+src/index.js   → CLI interativa  (docker compose run --rm cli)
+src/server.js  → Dashboard web   (http://localhost:3000)
+```
 
-## Tecnologias Utilizadas
+**Serviços Docker:**
 
-* Runtime: Node.js (v20-alpine)
-* Infraestrutura: Docker & Docker Compose
-* Servidor Web: Express.js
-* Comunicação: Axios (Consumo de API REST)
-* Persistência: JSON Local (Preparado para expansão em Neo4j)
+| Serviço | Porta | Descrição |
+|---------|-------|-----------|
+| `neo4j` | 7474 (HTTP), 7687 (Bolt) | Banco de grafos. Sobe primeiro — cli e dashboard aguardam seu healthcheck. |
+| `dashboard` | 3000 | Servidor Express com dashboard HTML e proxy de imagens. |
+| `cli` | — | Container interativo (TTY). Executado sob demanda. |
 
-## Como Rodar o Projeto
+## Pré-requisitos
 
-### Pré-requisitos
-* Docker e Docker Compose instalados.
-* Token da SuperHero API.
+- Docker e Docker Compose
+- Token da [SuperHero API](https://superheroapi.com)
 
-### Configuração
-1. Clone o repositório:
-   git clone https://github.com/seu-usuario/hero-cli.git
-   cd hero-cli
+## Configuração
 
-2. Variáveis de Ambiente:
-   Crie um arquivo .env na raiz:
-   SUPERHERO_TOKEN=seu_token_aqui
+```bash
+git clone https://github.com/joaobreno4/hero-cli.git
+cd hero-cli
 
-### Execução
+cp .env.example .env
+# Edite .env e preencha SUPERHERO_TOKEN
+```
 
-Para buscar heróis (CLI):
-docker compose run --rm cli
+`.env.example`:
+```
+SUPERHERO_TOKEN=seu_token_aqui
 
-Para visualizar o Dashboard:
+NEO4J_URI=bolt://neo4j:7687
+NEO4J_USER=neo4j
+NEO4J_PASSWORD=password123
+```
+
+## Como executar
+
+```bash
+# Ambiente completo (neo4j + dashboard + cli)
+docker compose up
+
+# Apenas o dashboard em background
 docker compose up -d dashboard
-Acesse: http://localhost:3000
+# Acesse: http://localhost:3000
+# Painel Neo4j: http://localhost:7474
 
-## Roadmap de Evolução (SRE focus)
-- [x] Dockerização e Orquestração com Compose.
-- [x] Persistência de dados via Volumes.
-- [x] Normalização de dados (Data Cleaning).
-- [ ] Implementação de Healthchecks de serviço.
-- [ ] Integração com banco de grafos Neo4j.
+# CLI interativa (busca e salva heróis)
+docker compose run --rm cli
+```
+
+### Uso da CLI
+
+```
+> Nome do herói: hulk
+
+Resultados para "hulk":
+1. Hulk                 | Marvel Comics
+2. Hulk                 | Marvel Comics (2099)
+3. She-Hulk             | Marvel Comics
+
+# Selecione o número (ou digite "nova" para reiniciar): 1
+[SRE] Confirmado: Hulk
+✔ Dados sincronizados com sucesso!
+```
+
+O herói selecionado é salvo simultaneamente no JSON local e como nó `:Hero` no Neo4j.
+
+## Tecnologias
+
+- **Runtime:** Node.js 20 (Alpine)
+- **Infraestrutura:** Docker & Docker Compose
+- **Servidor Web:** Express.js 5
+- **API externa:** SuperHero API (agnóstica — Marvel, DC, etc.)
+- **Persistência:** JSON local + Neo4j (grafo)
+- **Observabilidade:** Datadog APM via `dd-trace`
+- **HTTP client:** Axios
+
+## Roadmap SRE
+
+- [x] Dockerização e orquestração com Compose
+- [x] Persistência de dados via Docker Volumes
+- [x] Normalização de dados (Data Cleaning)
+- [x] Healthchecks de serviço com `depends_on: service_healthy`
+- [x] Integração com banco de grafos Neo4j
+- [x] Proxy de imagens com cache em memória (resolve Mixed Content)
+- [x] Observabilidade com Datadog APM (spans customizados por camada)
+- [ ] Relacionamentos entre heróis no grafo Neo4j
+- [ ] Alertas e SLOs no Datadog
 
 ---
+
 Desenvolvido por João Breno da Silva | DevOps & SRE Intern @ Deal Group.
