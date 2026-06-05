@@ -6,6 +6,8 @@ const { SUPERHERO_TOKEN } = require('../config/env');
 const DB_PATH = path.join(process.cwd(), 'data', 'marvel_heroes.json');
 const IMAGES_DIR = path.join(process.cwd(), 'data', 'images');
 
+const toSlug = (name) => name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+
 // ─── normalização de editora ───────────────────────────────────────────────
 
 const KNOWN_PUBLISHERS = new Set([
@@ -149,7 +151,7 @@ const getHeroByName = async (name) => {
                 id: hero.id,
                 name: hero.name,
                 description: `Editora: ${publisher} | Identidade: ${hero.biography['full-name'] || 'Secreta'}`,
-                thumbnail: `https://picsum.photos/seed/${hero.id}/400/400`,
+                thumbnail: `https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/sm/${hero.id}-${toSlug(hero.name)}.jpg`,
                 powerstats: {
                     intelligence: hero.powerstats.intelligence,
                     strength: hero.powerstats.strength,

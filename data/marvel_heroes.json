@@ -3,7 +3,7 @@
     "id": "332",
     "name": "Hulk",
     "description": "Editora: Marvel Comics | Identidade: Bruce Banner",
-    "thumbnail": "https://picsum.photos/seed/332/400/400",
+    "thumbnail": "https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/sm/332-hulk.jpg",
     "powerstats": {
       "intelligence": "88",
       "strength": "100",
@@ -17,7 +17,7 @@
     "id": "659",
     "name": "Thor",
     "description": "Editora: Marvel Comics | Identidade: Thor Odinson",
-    "thumbnail": "https://picsum.photos/seed/659/400/400",
+    "thumbnail": "https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/sm/659-thor.jpg",
     "powerstats": {
       "intelligence": "69",
       "strength": "100",
@@ -34,7 +34,7 @@
     "id": "644",
     "name": "Superman",
     "description": "Editora: DC Comics | Identidade: Clark Kent",
-    "thumbnail": "https://picsum.photos/seed/644/400/400",
+    "thumbnail": "https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/sm/644-superman.jpg",
     "powerstats": {
       "intelligence": "94",
       "strength": "100",
@@ -51,7 +51,7 @@
     "id": "620",
     "name": "Spider-Man",
     "description": "Editora: Marvel Comics | Identidade: Peter Parker",
-    "thumbnail": "https://picsum.photos/seed/620/400/400",
+    "thumbnail": "https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/sm/620-spider-man.jpg",
     "powerstats": {
       "intelligence": "90",
       "strength": "55",
@@ -68,7 +68,7 @@
     "id": "622",
     "name": "Spider-Man",
     "description": "Editora: Marvel Comics | Identidade: Miles Morales",
-    "thumbnail": "https://picsum.photos/seed/622/400/400",
+    "thumbnail": "https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/sm/622-spider-man.jpg",
     "powerstats": {
       "intelligence": "??",
       "strength": "58",
