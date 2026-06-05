@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    name: Syntax check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check syntax (all source files)
+        run: |
+          node --check src/index.js
+          node --check src/server.js
+          node --check src/services/api.js
+          node --check src/cli/interface.js
+          node --check src/config/env.js
+          node --check src/config/neo4j.js
+
+  docker-build:
+    name: Docker build
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create stub .env for build context
+        run: |
+          echo "SUPERHERO_TOKEN=${{ secrets.SUPERHERO_TOKEN || 'ci-placeholder' }}" > .env
+          echo "NEO4J_URI=bolt://neo4j:7687"   >> .env
+          echo "NEO4J_USER=neo4j"              >> .env
+          echo "NEO4J_PASSWORD=password123"    >> .env
+
+      - name: Build image (shared for cli and dashboard)
+        run: docker build -t hero-cli:ci .
+
+      - name: Smoke-test dashboard entrypoint resolves
+        run: |
+          docker run --rm --entrypoint node hero-cli:ci --check src/server.js
+
+      - name: Smoke-test CLI entrypoint resolves
+        run: |
+          docker run --rm --entrypoint node hero-cli:ci --check src/index.js

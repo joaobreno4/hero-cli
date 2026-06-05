@@ -66,9 +66,44 @@ services:
       retries: 6
       start_period: 40s
 
+  # ─── Observabilidade ──────────────────────────────────────────────────────
+
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=7d
+    networks:
+      - hero-network
+    depends_on:
+      dashboard:
+        condition: service_healthy
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "4000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    networks:
+      - hero-network
+    depends_on:
+      - prometheus
+
 networks:
   hero-network:
     driver: bridge
 
 volumes:
   neo4j_data:
+  prometheus_data:
+  grafana_data:

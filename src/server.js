@@ -8,10 +8,46 @@ const express = require('express');
 const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
+const promClient = require('prom-client');
 
 const app = express();
 const port = process.env.PORT || 3000;
 const dbPath = path.join(process.cwd(), 'data', 'marvel_heroes.json');
+
+// ─── Prometheus metrics ───────────────────────────────────────────────────
+const register = new promClient.Registry();
+promClient.collectDefaultMetrics({ register, prefix: 'hero_' });
+
+const httpRequestDuration = new promClient.Histogram({
+    name: 'hero_http_request_duration_seconds',
+    help: 'Duration of HTTP requests in seconds',
+    labelNames: ['method', 'route', 'status'],
+    buckets: [0.05, 0.1, 0.3, 0.5, 1, 2],
+    registers: [register],
+});
+
+const imageCacheHits = new promClient.Counter({
+    name: 'hero_image_cache_hits_total',
+    help: 'Total proxy-image cache hits',
+    registers: [register],
+});
+
+const imageCacheMisses = new promClient.Counter({
+    name: 'hero_image_cache_misses_total',
+    help: 'Total proxy-image cache misses',
+    registers: [register],
+});
+
+app.use((req, res, next) => {
+    const end = httpRequestDuration.startTimer();
+    res.on('finish', () => end({ method: req.method, route: req.path, status: res.statusCode }));
+    next();
+});
+
+app.get('/metrics', async (req, res) => {
+    res.set('Content-Type', register.contentType);
+    res.end(await register.metrics());
+});
 
 app.use('/images', express.static(path.join(__dirname, '..', 'data', 'images')));
 
@@ -34,6 +70,7 @@ app.get('/api/proxy-image', async (req, res) => {
     const cached = imageCache.get(url);
     if (cached && Date.now() - cached.cachedAt < CACHE_TTL_MS) {
         span.setTag('cache.hit', true);
+        imageCacheHits.inc();
         span.finish();
         res.setHeader('Content-Type', cached.contentType);
         res.setHeader('Cache-Control', 'public, max-age=86400');
@@ -59,6 +96,7 @@ app.get('/api/proxy-image', async (req, res) => {
         imageCache.set(url, { buffer, contentType, cachedAt: Date.now() });
 
         span.setTag('cache.hit', false);
+        imageCacheMisses.inc();
         span.finish();
         res.setHeader('Content-Type', contentType);
         res.setHeader('Cache-Control', 'public, max-age=86400');
